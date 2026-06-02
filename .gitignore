@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+local_mimo_config.py
+memory_store.json
+*.zip
