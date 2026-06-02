@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-MEMORY_FILE = Path("memory_store.json")
+MEMORY_FILE = Path(__file__).parent.parent / "data" / "memory_store.json"
 MAX_SUMMARY_CHARS = 1200
 MAX_MEMORY_TEXT_CHARS = 180
 

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body {
+    width: 260px;
+    padding: 16px;
+    font-family: "Microsoft YaHei", sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+  }
+  h3 { color: #8be9fd; margin: 0 0 12px; font-size: 15px; }
+  .status {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .status.ok { background: rgba(80, 250, 123, 0.15); color: #50fa7b; }
+  .status.err { background: rgba(255, 85, 85, 0.15); color: #ff5555; }
+  label { font-size: 12px; color: #bd93f9; display: block; margin: 8px 0 4px; }
+  input[type="range"] { width: 100%; }
+  .size-val { font-size: 11px; color: #6272a4; }
+  button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 12px;
+    background: #44475a;
+    color: #f8f8f2;
+    border: 1px solid #6272a4;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  button:hover { background: #6272a4; }
+</style>
+</head>
+<body>
+  <h3>Emotion Agent</h3>
+  <div id="status" class="status">检查中...</div>
+  <label>模型大小: <span id="size-val" class="size-val">250px</span></label>
+  <input type="range" id="size" min="150" max="500" value="250" step="10">
+  <button id="toggle">显示/隐藏模型</button>
+  <script src="popup.js"></script>
+</body>
+</html>

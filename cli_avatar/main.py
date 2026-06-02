@@ -1,21 +1,7 @@
 import json
 
-from cli_avatar.config import DEFAULT_SYSTEM_PROMPT, ConfigError, load_config
-from cli_avatar.expression import (
-    DEFAULT_EXPRESSION,
-    build_expression_messages,
-    format_expression,
-    parse_expression_json,
-)
-from cli_avatar.memory import (
-    MemoryStore,
-    build_memory_update_messages,
-    build_reply_messages,
-)
-from cli_avatar.openai_compatible_client import OpenAICompatibleClient
-
-
-MAX_TURNS = 6
+from cli_avatar.config import ConfigError, load_config
+from cli_avatar.engine import AgentEngine
 
 
 def print_help() -> None:
@@ -55,16 +41,7 @@ def main() -> None:
         print('  $env:OPENAI_TOKEN_PARAM="max_completion_tokens"')
         return
 
-    client = OpenAICompatibleClient(
-        api_key=str(config["api_key"]),
-        base_url=str(config["base_url"]),
-        model=str(config["model"]),
-        api_key_header=str(config["api_key_header"]),
-        token_param=str(config["token_param"]),
-    )
-    memory_store = MemoryStore()
-    turns: list[dict[str, object]] = []
-    debug = False
+    engine = AgentEngine(config)
 
     print("Emotion Agent CLI - LLM A + Expression JSON B")
     print(f"Model: {config['model']}")
@@ -87,110 +64,63 @@ def main() -> None:
             print_help()
             continue
         if user_input == "/clear":
-            turns = []
+            engine.reset()
             print("本轮上下文已清空，长期记忆保留。")
             continue
         if user_input == "/forget":
-            memory_store.clear()
-            turns = []
+            engine.reset_all()
             print("摘要和长期记忆已清空。")
             continue
         if user_input == "/debug":
-            debug = not debug
-            print(f"调试模式: {'开启' if debug else '关闭'}")
+            engine.debug = not engine.debug
+            print(f"调试模式: {'开启' if engine.debug else '关闭'}")
             continue
         if user_input == "/history":
-            print(json.dumps(turns, ensure_ascii=False, indent=2))
+            print(json.dumps(engine.get_history(), ensure_ascii=False, indent=2))
             continue
         if user_input == "/memory":
             print(
                 json.dumps(
-                    {
-                        "summary": memory_store.summary,
-                        "memories": memory_store.memories,
-                    },
+                    engine.get_memory_info(),
                     ensure_ascii=False,
                     indent=2,
                 )
             )
             continue
 
-        reply_messages, relevant_memories = build_reply_messages(
-            DEFAULT_SYSTEM_PROMPT,
-            user_input,
-            turns,
-            memory_store,
-        )
-
         try:
-            reply = client.chat(
-                reply_messages,
-                temperature=float(config["temperature"]),
-                max_tokens=int(config["max_tokens"]),
-            )
+            result = engine.chat(user_input)
         except RuntimeError as exc:
             print(f"\nAPI 错误: {exc}")
             continue
 
-        expression_messages = build_expression_messages(user_input, reply, turns)
-        expression_error = ""
-        raw_expression = ""
-        try:
-            raw_expression = client.chat(
-                expression_messages,
-                temperature=0.2,
-                max_tokens=int(config["max_tokens"]),
-            )
-            expression = parse_expression_json(raw_expression)
-        except (RuntimeError, ValueError, json.JSONDecodeError) as exc:
-            expression_error = str(exc)
-            expression = DEFAULT_EXPRESSION.copy()
-
-        turns.append(
-            {
-                "user": user_input,
-                "assistant": reply,
-                "expression": expression,
-            }
-        )
-        turns = turns[-MAX_TURNS:]
-
-        memory_error = ""
-        memories_added = 0
-        raw_memory = ""
-        try:
-            raw_memory = client.chat(
-                build_memory_update_messages(
-                    memory_store.summary,
-                    turns,
-                    user_input,
-                    reply,
-                ),
-                temperature=0.2,
-                max_tokens=max(int(config["max_tokens"]), 2048),
-            )
-            memories_added = memory_store.update_from_model_json(raw_memory)
-        except (RuntimeError, ValueError, json.JSONDecodeError) as exc:
-            memory_error = str(exc)
-
-        print(f"\nAI> {reply}")
+        print(f"\nAI> {result['text']}")
         print("\nExpression JSON>")
-        print(format_expression(expression))
-        if debug:
-            print("\nRelevant Memories>")
-            print(json.dumps(relevant_memories, ensure_ascii=False, indent=2))
-        if debug and raw_expression:
-            print("\nRaw Expression Output>")
-            print(raw_expression)
-        if debug and raw_memory:
-            print("\nRaw Memory Output>")
-            print(raw_memory)
-        if expression_error:
-            print(f"\nExpression fallback: {expression_error}")
-        if memory_error:
-            print(f"\nMemory update failed: {memory_error}")
-        elif debug:
-            print(f"\nMemory updated: added {memories_added} item(s)")
+        print(
+            json.dumps(
+                {k: v for k, v in result.items() if k != "_debug"},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+
+        debug_info = result.get("_debug")
+        if debug_info:
+            if debug_info.get("relevant_memories"):
+                print("\nRelevant Memories>")
+                print(json.dumps(debug_info["relevant_memories"], ensure_ascii=False, indent=2))
+            if debug_info.get("raw_expression"):
+                print("\nRaw Expression Output>")
+                print(debug_info["raw_expression"])
+            if debug_info.get("raw_memory"):
+                print("\nRaw Memory Output>")
+                print(debug_info["raw_memory"])
+            if debug_info.get("expression_error"):
+                print(f"\nExpression fallback: {debug_info['expression_error']}")
+            if debug_info.get("memory_error"):
+                print(f"\nMemory update failed: {debug_info['memory_error']}")
+            elif debug_info.get("memories_added"):
+                print(f"\nMemory updated: added {debug_info['memories_added']} item(s)")
 
 
 if __name__ == "__main__":

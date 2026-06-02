@@ -1,6 +1,8 @@
 import os
+import sys
 
-from cli_avatar.main import main
+from cli_avatar.engine import AgentEngine
+from cli_avatar.server import run_server
 
 try:
     from config.local_mimo_config import (
@@ -35,4 +37,22 @@ def apply_local_config() -> None:
 
 if __name__ == "__main__":
     apply_local_config()
-    main()
+
+    host = "127.0.0.1"
+    port = 8765
+
+    # 支持命令行参数: python run_agent_server.py --port 8765
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--host" and i + 1 < len(args):
+            host = args[i + 1]
+            i += 2
+        elif args[i] == "--port" and i + 1 < len(args):
+            port = int(args[i + 1])
+            i += 2
+        else:
+            i += 1
+
+    engine = AgentEngine()
+    run_server(engine, host, port)
