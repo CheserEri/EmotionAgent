@@ -1,5 +1,21 @@
 __pycache__/
 *.pyc
-local_mimo_config.py
-memory_store.json
+config/local_mimo_config.py
+data/memory_store.json
 *.zip
+
+# 模型文件（太大，不入 git）
+chrome-extension/models/*.pmx
+chrome-extension/models/*.png
+chrome-extension/models/*.bmp
+chrome-extension/models/*.jpg
+chrome-extension/models/*.tga
+web/models/*.pmx
+web/models/*.png
+web/models/*.bmp
+web/models/*.jpg
+web/models/*.tga
+
+# Three.js 库（CDN 加载，不入 git）
+chrome-extension/lib/three.min.js
+chrome-extension/lib/bundle.js
